@@ -47,9 +47,17 @@
 
 #include <deal.II/numerics/data_out.h>
 
+#include <deal.II/lac/petsc_vector.h>
+#include <deal.II/lac/petsc_parallel_vector.h>
+#include <deal.II/lac/petsc_parallel_sparse_matrix.h>
 #include <deal.II/lac/petsc_solver.h>
+#include <deal.II/lac/petsc_precondition.h>
+#include <deal.II/grid/grid_tools.h>
+#include <deal.II/dofs/dof_renumbering.h>
 
 #include <deal.II/base/timer.h>
+
+
 
 #include <fstream>
 #include <iostream>
@@ -126,7 +134,7 @@ namespace Step23
 
 
   template <int dim>
-  double InitialValuesU<dim>::value (const Point<dim>  &/*p*/,
+  double InitialValuesU<dim>::value (const Point<dim>  &p,
                                      const unsigned int component) const
   {
     Assert (component == 0, ExcInternalError());
@@ -136,7 +144,7 @@ namespace Step23
 
 
   template <int dim>
-  double InitialValuesV<dim>::value (const Point<dim>  &/*p*/,
+  double InitialValuesV<dim>::value (const Point<dim>  &p,
                                      const unsigned int component) const
   {
     Assert (component == 0, ExcInternalError());
@@ -155,16 +163,33 @@ namespace Step23
 
     virtual double value (const Point<dim>   &p,
                           const unsigned int  component = 0) const;
+
+    virtual void vector_value_list (const std::vector<Point<dim> > &points,
+                                    std::vector<Vector<double> >   &value_list) const;
   };
 
 
 
   template <int dim>
-  double RightHandSide<dim>::value (const Point<dim>  &/*p*/,
+  double RightHandSide<dim>::value (const Point<dim>  &p,
                                     const unsigned int component) const
   {
     Assert (component == 0, ExcInternalError());
     return 0;
+  }
+
+  template <int dim>
+  void RightHandSide<dim>::vector_value_list (const std::vector<Point<dim> > &points,
+                                              std::vector<Vector<double> >   &value_list) const
+  {
+    const unsigned int n_points = points.size();
+
+    Assert (value_list.size() == n_points,
+            ExcDimensionMismatch (value_list.size(), n_points));
+
+    for (unsigned int p=0; p<n_points; ++p)
+      RightHandSide<dim>::vector_value (points[p],
+                                        value_list[p]);
   }
 
 
@@ -274,22 +299,25 @@ namespace Step23
     FE_Q<dim>            fe;
     DoFHandler<dim>      dof_handler;
 
-    ConstraintMatrix constraints;
+    // ConstraintMatrix hanging_node_constraints;
+    ConstraintMatrix     hanging_node_constraints;
 
-    SparsityPattern      sparsity_pattern;
-    SparseMatrix<double> mass_matrix;
-    SparseMatrix<double> laplace_matrix;
-    SparseMatrix<double> matrix_u;
-    SparseMatrix<double> matrix_v;
+    PETScWrappers::MPI::SparseMatrix mass_matrix;
+    PETScWrappers::MPI::SparseMatrix laplace_matrix;
+    PETScWrappers::MPI::SparseMatrix matrix_u;
+    PETScWrappers::MPI::SparseMatrix matrix_v;
 
-    Vector<double>       solution_u, solution_v;
-    Vector<double>       old_solution_u, old_solution_v;
-    Vector<double>       system_rhs;
+    PETScWrappers::MPI::Vector       solution_u, solution_v;
+    PETScWrappers::MPI::Vector       old_solution_u, old_solution_v;
+    PETScWrappers::MPI::Vector       system_rhs;
 
     double time, time_step;
     unsigned int timestep_number;
     const double theta;
     MPI_Comm mpi_communicator;
+
+    const unsigned int n_mpi_processes;
+    const unsigned int this_mpi_process;
 
     ConditionalOStream                        pcout;
 
@@ -323,6 +351,8 @@ namespace Step23
     time_step (1./64),
     theta (0.5),
     mpi_communicator (MPI_COMM_WORLD),
+    n_mpi_processes (Utilities::MPI::n_mpi_processes(mpi_communicator)),
+    this_mpi_process (Utilities::MPI::this_mpi_process(mpi_communicator)),
     pcout (std::cout,
            (Utilities::MPI::this_mpi_process(mpi_communicator)
             == 0)),
@@ -336,7 +366,9 @@ namespace Step23
                      TimerOutput::summary,
                      TimerOutput::wall_times)
 
-  {}
+  {
+    pcout.set_condition(this_mpi_process == 0);
+  }
 
 
   // @sect4{WaveEquation::setup_system}
@@ -350,25 +382,58 @@ namespace Step23
   {
     TimerOutput::Scope t(computing_timer, "setup");
     TimerOutput::Scope twall(computing_timer_wall, "setup");
+
+
     GridGenerator::hyper_cube (triangulation, -1, 1);
     triangulation.refine_global (5);
 
-    std::cout << "Number of active cells: "
+    pcout << "Number of active cells: "
               << triangulation.n_active_cells()
               << std::endl;
 
-    dof_handler.distribute_dofs (fe);
+    GridTools::partition_triangulation (n_mpi_processes, triangulation);
 
-    std::cout << "Number of degrees of freedom: "
+    dof_handler.distribute_dofs (fe);
+    DoFRenumbering::subdomain_wise (dof_handler);
+
+    pcout << "Number of degrees of freedom: "
               << dof_handler.n_dofs()
               << std::endl
               << std::endl;
 
-    sparsity_pattern.reinit (dof_handler.n_dofs(),
-                             dof_handler.n_dofs(),
-                             dof_handler.max_couplings_between_dofs());
-    DoFTools::make_sparsity_pattern (dof_handler, sparsity_pattern);
-    sparsity_pattern.compress();
+    const types::global_dof_index n_local_dofs
+      = DoFTools::count_dofs_with_subdomain_association (dof_handler,
+                                                         this_mpi_process);
+
+    mass_matrix.reinit (mpi_communicator,
+                          dof_handler.n_dofs(),
+                          dof_handler.n_dofs(),
+                          n_local_dofs,
+                          n_local_dofs,
+                          dof_handler.max_couplings_between_dofs());
+
+    laplace_matrix.reinit (mpi_communicator,
+                          dof_handler.n_dofs(),
+                          dof_handler.n_dofs(),
+                          n_local_dofs,
+                          n_local_dofs,
+                          dof_handler.max_couplings_between_dofs());
+
+    matrix_u.reinit (mpi_communicator,
+                          dof_handler.n_dofs(),
+                          dof_handler.n_dofs(),
+                          n_local_dofs,
+                          n_local_dofs,
+                          dof_handler.max_couplings_between_dofs());
+
+    matrix_v.reinit (mpi_communicator,
+                          dof_handler.n_dofs(),
+                          dof_handler.n_dofs(),
+                          n_local_dofs,
+                          n_local_dofs,
+                          dof_handler.max_couplings_between_dofs());
+
+   
 
     // Then comes a block where we have to initialize the 3 matrices we need
     // in the course of the program: the mass matrix, the Laplace matrix, and
@@ -393,10 +458,11 @@ namespace Step23
     // processors are available in a machine. The matrices for solving linear
     // systems will be filled in the run() method because we need to re-apply
     // boundary conditions every time step.
-    mass_matrix.reinit (sparsity_pattern);
-    laplace_matrix.reinit (sparsity_pattern);
-    matrix_u.reinit (sparsity_pattern);
-    matrix_v.reinit (sparsity_pattern);
+    // 
+    // mass_matrix.reinit (sparsity_pattern);
+    // laplace_matrix.reinit (sparsity_pattern);
+    // matrix_u.reinit (sparsity_pattern);
+    // matrix_v.reinit (sparsity_pattern);
 
     // MatrixCreator::create_mass_matrix (dof_handler, QGauss<dim>(3),
     //                                    mass_matrix);
@@ -411,14 +477,17 @@ namespace Step23
     // or have been computed (i.e. there was no need to call
     // DoFTools::make_hanging_node_constraints as in other programs), but we
     // need a constraints object in one place further down below anyway.
-    solution_u.reinit (dof_handler.n_dofs());
-    solution_v.reinit (dof_handler.n_dofs());
-    old_solution_u.reinit (dof_handler.n_dofs());
-    old_solution_v.reinit (dof_handler.n_dofs());
-    system_rhs.reinit (dof_handler.n_dofs());
+    solution_u.reinit (mpi_communicator, dof_handler.n_dofs(), n_local_dofs);
+    solution_v.reinit (mpi_communicator, dof_handler.n_dofs(), n_local_dofs);
+    old_solution_u.reinit (mpi_communicator, dof_handler.n_dofs(), n_local_dofs);
+    old_solution_v.reinit (mpi_communicator, dof_handler.n_dofs(), n_local_dofs);
+    system_rhs.reinit (mpi_communicator, dof_handler.n_dofs(), n_local_dofs);
 
     // DoFTools::make_hanging_node_constraints
-    constraints.close ();
+    hanging_node_constraints.clear ();
+    DoFTools::make_hanging_node_constraints (dof_handler,
+                                             hanging_node_constraints);
+    hanging_node_constraints.close ();
   }
 
 
@@ -452,17 +521,29 @@ namespace Step23
     TimerOutput::Scope t(computing_timer, "solve_u");
     TimerOutput::Scope twall(computing_timer_wall, "solve_u");
     SolverControl           solver_control (1000, 1e-8*system_rhs.l2_norm());
-    SolverCG<>              cg (solver_control);
+    // SolverCG<>              cg (solver_control);
 
-    // SolverControl cn;
-    // PETScWrappers::SparseDirectMUMPS solver(cn, mpi_communicator);
-    // // solver.set_symmetric_mode(true);
-    // solver.solve(matrix_u, solution_u, system_rhs);
+    // // SolverControl cn;
+    // // PETScWrappers::SparseDirectMUMPS solver(cn, mpi_communicator);
+    // // // solver.set_symmetric_mode(true);
+    // // solver.solve(matrix_u, solution_u, system_rhs);
 
-    cg.solve (matrix_u, solution_u, system_rhs,
-              PreconditionIdentity());
+    // cg.solve (matrix_u, solution_u, system_rhs,
+    //           PreconditionIdentity());
 
-    std::cout << "   u-equation: " << solver_control.last_step()
+    // std::cout << "   u-equation: " << solver_control.last_step()
+    //           << " CG iterations."
+    //           << std::endl;
+    //           
+    
+    PETScWrappers::SolverCG cg (solver_control,
+                                mpi_communicator);
+
+    PETScWrappers::PreconditionNone preconditioner(matrix_u);
+
+    cg.solve (matrix_u, solution_u, system_rhs, preconditioner);
+
+    pcout << "   u-equation: " << solver_control.last_step()
               << " CG iterations."
               << std::endl;
   }
@@ -474,12 +555,19 @@ namespace Step23
     TimerOutput::Scope t(computing_timer, "solve_v");
     TimerOutput::Scope twall(computing_timer_wall, "solve_v");
     SolverControl           solver_control (1000, 1e-8*system_rhs.l2_norm());
-    SolverCG<>              cg (solver_control);
+    // SolverCG<>              cg (solver_control);
 
-    cg.solve (matrix_v, solution_v, system_rhs,
-              PreconditionIdentity());
+    // cg.solve (matrix_v, solution_v, system_rhs,
+    //           PreconditionIdentity());
+    //           
+    PETScWrappers::SolverCG cg (solver_control,
+                                mpi_communicator);
+    //           
+    PETScWrappers::PreconditionNone preconditioner(matrix_v);
 
-    std::cout << "   v-equation: " << solver_control.last_step()
+    cg.solve (matrix_v, solution_v, system_rhs, preconditioner);
+
+    pcout << "   v-equation: " << solver_control.last_step()
               << " CG iterations."
               << std::endl;
   }
@@ -516,50 +604,50 @@ namespace Step23
   void WaveEquation<dim>::test ()
   {
     // setup_system();
-    GridGenerator::hyper_cube (triangulation, -1, 1);
-    triangulation.refine_global (1);
+    // GridGenerator::hyper_cube (triangulation, -1, 1);
+    // triangulation.refine_global (1);
 
-    std::cout << "Number of active cells: "
-              << triangulation.n_active_cells()
-              << std::endl;
+    // std::cout << "Number of active cells: "
+    //           << triangulation.n_active_cells()
+    //           << std::endl;
 
-    dof_handler.distribute_dofs (fe);
+    // dof_handler.distribute_dofs (fe);
 
-    std::cout << "Number of degrees of freedom: "
-              << dof_handler.n_dofs()
-              << std::endl
-              << std::endl;
+    // std::cout << "Number of degrees of freedom: "
+    //           << dof_handler.n_dofs()
+    //           << std::endl
+    //           << std::endl;
 
-    sparsity_pattern.reinit (dof_handler.n_dofs(),
-                             dof_handler.n_dofs(),
-                             dof_handler.max_couplings_between_dofs());
-    DoFTools::make_sparsity_pattern (dof_handler, sparsity_pattern);
-    sparsity_pattern.compress();
-
-   
-    mass_matrix.reinit (sparsity_pattern);
-    laplace_matrix.reinit (sparsity_pattern);
-    matrix_u.reinit (sparsity_pattern);
-    matrix_v.reinit (sparsity_pattern);
-
-    // MatrixCreator::create_mass_matrix (dof_handler, QGauss<dim>(3),
-                                       // mass_matrix);
-    assemble_mass_matrix ();
-    // assemble_laplace_matrix();
-    // MatrixCreator::create_laplace_matrix (dof_handler, QGauss<dim>(3),
-    //                                       laplace_matrix);
+    // sparsity_pattern.reinit (dof_handler.n_dofs(),
+    //                          dof_handler.n_dofs(),
+    //                          dof_handler.max_couplings_between_dofs());
+    // DoFTools::make_sparsity_pattern (dof_handler, sparsity_pattern);
+    // sparsity_pattern.compress();
 
    
-    // solution_u.reinit (dof_handler.n_dofs());
-    // solution_v.reinit (dof_handler.n_dofs());
-    // old_solution_u.reinit (dof_handler.n_dofs());
-    // old_solution_v.reinit (dof_handler.n_dofs());
-    // system_rhs.reinit (dof_handler.n_dofs());
+    // mass_matrix.reinit (sparsity_pattern);
+    // laplace_matrix.reinit (sparsity_pattern);
+    // matrix_u.reinit (sparsity_pattern);
+    // matrix_v.reinit (sparsity_pattern);
 
-    // DoFTools::make_hanging_node_constraints
-    constraints.close ();
+    // // MatrixCreator::create_mass_matrix (dof_handler, QGauss<dim>(3),
+    //                                    // mass_matrix);
+    // assemble_mass_matrix ();
+    // // assemble_laplace_matrix();
+    // // MatrixCreator::create_laplace_matrix (dof_handler, QGauss<dim>(3),
+    // //                                       laplace_matrix);
 
-    std::cout << mass_matrix.m() << "  " << mass_matrix.n() << std::endl;
+   
+    // // solution_u.reinit (dof_handler.n_dofs());
+    // // solution_v.reinit (dof_handler.n_dofs());
+    // // old_solution_u.reinit (dof_handler.n_dofs());
+    // // old_solution_v.reinit (dof_handler.n_dofs());
+    // // system_rhs.reinit (dof_handler.n_dofs());
+
+    // // DoFTools::make_hanging_node_constraints
+    // constraints.close ();
+
+    // std::cout << mass_matrix.m() << "  " << mass_matrix.n() << std::endl;
 
 
   }
@@ -591,30 +679,41 @@ namespace Step23
     int koko = 0;
     for (; cell!=endc; ++cell)
     {
-      koko++;
-      fe_values.reinit (cell);
-      cell_matrix = 0;
+      if (cell->subdomain_id() == this_mpi_process)
+      {
+        koko++;
+        fe_values.reinit (cell);
+        cell_matrix = 0;
 
-      for (unsigned int q_index=0; q_index<n_q_points; ++q_index)
+        for (unsigned int q_index=0; q_index<n_q_points; ++q_index)
+          for (unsigned int i=0; i<dofs_per_cell; ++i)
+            {
+              for (unsigned int j=0; j<dofs_per_cell; ++j) 
+              {
+                cell_matrix(i,j) += (fe_values.shape_value (i, q_index) *
+                                     fe_values.shape_value (j, q_index) *
+                                     fe_values.JxW (q_index));
+
+              }
+            }
+
+        cell->get_dof_indices (local_dof_indices);
         for (unsigned int i=0; i<dofs_per_cell; ++i)
           {
-            for (unsigned int j=0; j<dofs_per_cell; ++j) 
-            {
-              cell_matrix(i,j) += (fe_values.shape_value (i, q_index) *
-                                   fe_values.shape_value (j, q_index) *
-                                   fe_values.JxW (q_index));
-
-            }
+            for (unsigned int j=0; j<dofs_per_cell; ++j)
+              mass_matrix.add (local_dof_indices[i],
+                                 local_dof_indices[j],
+                                 cell_matrix(i,j));
           }
-
-      cell->get_dof_indices (local_dof_indices);
-      for (unsigned int i=0; i<dofs_per_cell; ++i)
-        {
-          for (unsigned int j=0; j<dofs_per_cell; ++j)
-            mass_matrix.add (local_dof_indices[i],
-                               local_dof_indices[j],
-                               cell_matrix(i,j));
-        }
+        
+        cell->get_dof_indices (local_dof_indices);
+        hanging_node_constraints
+        .distribute_local_to_global(cell_matrix, 
+                                    cell_rhs,
+                                    local_dof_indices,
+                                    mass_matrix); 
+      }
+      
     }
 
   }
@@ -646,30 +745,40 @@ namespace Step23
     int koko = 0;
     for (; cell!=endc; ++cell)
     {
-      koko++;
-      fe_values.reinit (cell);
-      cell_matrix = 0;
-      // std::cout <<  "dddd " <<  koko <<std::endl;
-      for (unsigned int q_index=0; q_index<n_q_points; ++q_index)
+      if (cell->subdomain_id() == this_mpi_process)
+      {
+        koko++;
+        fe_values.reinit (cell);
+        cell_matrix = 0;
+        // std::cout <<  "dddd " <<  koko <<std::endl;
+        for (unsigned int q_index=0; q_index<n_q_points; ++q_index)
+          for (unsigned int i=0; i<dofs_per_cell; ++i)
+            {
+              for (unsigned int j=0; j<dofs_per_cell; ++j) 
+              {
+                cell_matrix(i,j) += (fe_values.shape_grad (i, q_index) *
+                                     fe_values.shape_grad (j, q_index) *
+                                     fe_values.JxW (q_index));
+
+              }
+            }
+
+        cell->get_dof_indices (local_dof_indices);
         for (unsigned int i=0; i<dofs_per_cell; ++i)
           {
-            for (unsigned int j=0; j<dofs_per_cell; ++j) 
-            {
-              cell_matrix(i,j) += (fe_values.shape_grad (i, q_index) *
-                                   fe_values.shape_grad (j, q_index) *
-                                   fe_values.JxW (q_index));
-
-            }
+            for (unsigned int j=0; j<dofs_per_cell; ++j)
+              laplace_matrix.add (local_dof_indices[i],
+                                 local_dof_indices[j],
+                                 cell_matrix(i,j));
           }
 
-      cell->get_dof_indices (local_dof_indices);
-      for (unsigned int i=0; i<dofs_per_cell; ++i)
-        {
-          for (unsigned int j=0; j<dofs_per_cell; ++j)
-            laplace_matrix.add (local_dof_indices[i],
-                               local_dof_indices[j],
-                               cell_matrix(i,j));
-        }
+        cell->get_dof_indices (local_dof_indices);
+        hanging_node_constraints
+        .distribute_local_to_global(cell_matrix, 
+                                    cell_rhs,
+                                    local_dof_indices,
+                                    laplace_matrix); 
+      }
     }
     // std::cout <<  "sss " <<  koko <<std::endl;
   }
@@ -693,10 +802,10 @@ namespace Step23
     TimerOutput::Scope t(computing_timer, "run");
     TimerOutput::Scope twall(computing_timer_wall, "run");
 
-    VectorTools::project (dof_handler, constraints, QGauss<dim>(3),
+    VectorTools::project (dof_handler, hanging_node_constraints, QGauss<dim>(3),
                           InitialValuesU<dim>(),
                           old_solution_u);
-    VectorTools::project (dof_handler, constraints, QGauss<dim>(3),
+    VectorTools::project (dof_handler, hanging_node_constraints, QGauss<dim>(3),
                           InitialValuesV<dim>(),
                           old_solution_v);
 
@@ -722,11 +831,16 @@ namespace Step23
     // we almost always work on a single time step at a time, and where it
     // never happens that, for example, one would like to evaluate a
     // space-time function for all times at any given spatial location.
-    Vector<double> tmp (solution_u.size());
-    Vector<double> forcing_terms (solution_u.size());
+    PETScWrappers::MPI::Vector tmp (mpi_communicator, solution_u.size(), solution_u.local_size());
+    PETScWrappers::MPI::Vector forcing_terms (mpi_communicator, solution_u.size(), solution_u.local_size());
+
+    PETScWrappers::MPI::Vector kkk (mpi_communicator, solution_u.size(), solution_u.local_size());
+
+    for (unsigned int i=0; i<kkk.size(); ++i)
+      kkk(i) = 0;
 
     for (timestep_number=1, time=time_step;
-         time<=5;
+         time<=2;
          time+=time_step, ++timestep_number)
       {
         std::cout << "Time step " << timestep_number
@@ -741,6 +855,7 @@ namespace Step23
         laplace_matrix.vmult (tmp, old_solution_u);
         system_rhs.add (-theta * (1-theta) * time_step * time_step, tmp);
 
+        /*
         RightHandSide<dim> rhs_function;
         rhs_function.set_time (time);
         VectorTools::create_right_hand_side (dof_handler, QGauss<dim>(2),
@@ -753,6 +868,13 @@ namespace Step23
                                              rhs_function, tmp);
 
         forcing_terms.add ((1-theta) * time_step, tmp);
+
+        system_rhs.add (theta * time_step, forcing_terms);
+        */
+        forcing_terms = kkk;
+        forcing_terms *= theta * time_step;
+
+        forcing_terms.add ((1-theta) * time_step, kkk);
 
         system_rhs.add (theta * time_step, forcing_terms);
 
@@ -834,9 +956,9 @@ namespace Step23
         // $\left<V^n,MV^n\right>$ and $\left<U^n,AU^n\right>$ in one step,
         // saving us the expense of a temporary vector and several lines of
         // code:
-        output_results ();
+        // output_results ();
 
-        std::cout << "   Total energy: "
+        pcout << "   Total energy: "
                   << (mass_matrix.matrix_norm_square (solution_v) +
                       laplace_matrix.matrix_norm_square (solution_u)) / 2
                   << std::endl;
