@@ -434,50 +434,10 @@ namespace Step23
                           n_local_dofs,
                           dof_handler.max_couplings_between_dofs());
 
-   
 
-    // Then comes a block where we have to initialize the 3 matrices we need
-    // in the course of the program: the mass matrix, the Laplace matrix, and
-    // the matrix $M+k^2\theta^2A$ used when solving for $U^n$ in each time
-    // step.
-    //
-    // When setting up these matrices, note that they all make use of the same
-    // sparsity pattern object. Finally, the reason why matrices and sparsity
-    // patterns are separate objects in deal.II (unlike in many other finite
-    // element or linear algebra classes) becomes clear: in a significant
-    // fraction of applications, one has to hold several matrices that happen
-    // to have the same sparsity pattern, and there is no reason for them not
-    // to share this information, rather than re-building and wasting memory
-    // on it several times.
-    //
-    // After initializing all of these matrices, we call library functions
-    // that build the Laplace and mass matrices. All they need is a DoFHandler
-    // object and a quadrature formula object that is to be used for numerical
-    // integration. Note that in many respects these functions are better than
-    // what we would usually do in application programs, for example because
-    // they automatically parallelize building the matrices if multiple
-    // processors are available in a machine. The matrices for solving linear
-    // systems will be filled in the run() method because we need to re-apply
-    // boundary conditions every time step.
-    // 
-    // mass_matrix.reinit (sparsity_pattern);
-    // laplace_matrix.reinit (sparsity_pattern);
-    // matrix_u.reinit (sparsity_pattern);
-    // matrix_v.reinit (sparsity_pattern);
-
-    // MatrixCreator::create_mass_matrix (dof_handler, QGauss<dim>(3),
-    //                                    mass_matrix);
     assemble_mass_matrix ();
     assemble_laplace_matrix ();
-    // MatrixCreator::create_laplace_matrix (dof_handler, QGauss<dim>(3),
-    //                                       laplace_matrix);
-
-    // The rest of the function is spent on setting vector sizes to the
-    // correct value. The final line closes the hanging node constraints
-    // object. Since we work on a uniformly refined mesh, no constraints exist
-    // or have been computed (i.e. there was no need to call
-    // DoFTools::make_hanging_node_constraints as in other programs), but we
-    // need a constraints object in one place further down below anyway.
+    
     solution_u.reinit (mpi_communicator, dof_handler.n_dofs(), n_local_dofs);
     solution_v.reinit (mpi_communicator, dof_handler.n_dofs(), n_local_dofs);
     old_solution_u.reinit (mpi_communicator, dof_handler.n_dofs(), n_local_dofs);
@@ -494,28 +454,7 @@ namespace Step23
 
   
 
-  // template <int dim>
-  // void WaveEquation<dim>::assemble_laplace_matrix ()
-  // {
-    
-  // }
-
-
-
-  // @sect4{WaveEquation::solve_u and WaveEquation::solve_v}
-
-  // The next two functions deal with solving the linear systems associated
-  // with the equations for $U^n$ and $V^n$. Both are not particularly
-  // interesting as they pretty much follow the scheme used in all the
-  // previous tutorial programs.
-  //
-  // One can make little experiments with preconditioners for the two matrices
-  // we have to invert. As it turns out, however, for the matrices at hand
-  // here, using Jacobi or SSOR preconditioners reduces the number of
-  // iterations necessary to solve the linear system slightly, but due to the
-  // cost of applying the preconditioner it is no win in terms of run-time. It
-  // is not much of a loss either, but let's keep it simple and just do
-  // without:
+  
   template <int dim>
   void WaveEquation<dim>::solve_u ()
   {
@@ -585,12 +524,16 @@ namespace Step23
   template <int dim>
   void WaveEquation<dim>::output_results () const
   {
+    // Gather data from all processes.
+    const PETScWrappers::Vector localized_solution_u (solution_u);
+    const PETScWrappers::Vector localized_solution_v (solution_v);
+
     if ( this_mpi_process == 0 ) {
       DataOut<dim> data_out;
 
       data_out.attach_dof_handler (dof_handler);
-      data_out.add_data_vector (solution_u, "U");
-      data_out.add_data_vector (solution_v, "V");
+      data_out.add_data_vector (localized_solution_u, "U");
+      data_out.add_data_vector (localized_solution_v, "V");
 
       data_out.build_patches ();
 
@@ -598,7 +541,6 @@ namespace Step23
                                    Utilities::int_to_string (timestep_number, 3) +
                                    ".vtk";
       std::ofstream output (filename.c_str());
-      // data_out.write_gnuplot (output);
       data_out.write_vtk (output);
     }
     
@@ -607,52 +549,6 @@ namespace Step23
   template <int dim>
   void WaveEquation<dim>::test ()
   {
-    // setup_system();
-    // GridGenerator::hyper_cube (triangulation, -1, 1);
-    // triangulation.refine_global (1);
-
-    // std::cout << "Number of active cells: "
-    //           << triangulation.n_active_cells()
-    //           << std::endl;
-
-    // dof_handler.distribute_dofs (fe);
-
-    // std::cout << "Number of degrees of freedom: "
-    //           << dof_handler.n_dofs()
-    //           << std::endl
-    //           << std::endl;
-
-    // sparsity_pattern.reinit (dof_handler.n_dofs(),
-    //                          dof_handler.n_dofs(),
-    //                          dof_handler.max_couplings_between_dofs());
-    // DoFTools::make_sparsity_pattern (dof_handler, sparsity_pattern);
-    // sparsity_pattern.compress();
-
-   
-    // mass_matrix.reinit (sparsity_pattern);
-    // laplace_matrix.reinit (sparsity_pattern);
-    // matrix_u.reinit (sparsity_pattern);
-    // matrix_v.reinit (sparsity_pattern);
-
-    // // MatrixCreator::create_mass_matrix (dof_handler, QGauss<dim>(3),
-    //                                    // mass_matrix);
-    // assemble_mass_matrix ();
-    // // assemble_laplace_matrix();
-    // // MatrixCreator::create_laplace_matrix (dof_handler, QGauss<dim>(3),
-    // //                                       laplace_matrix);
-
-   
-    // // solution_u.reinit (dof_handler.n_dofs());
-    // // solution_v.reinit (dof_handler.n_dofs());
-    // // old_solution_u.reinit (dof_handler.n_dofs());
-    // // old_solution_v.reinit (dof_handler.n_dofs());
-    // // system_rhs.reinit (dof_handler.n_dofs());
-
-    // // DoFTools::make_hanging_node_constraints
-    // constraints.close ();
-
-    // std::cout << mass_matrix.m() << "  " << mass_matrix.n() << std::endl;
-
 
   }
 
@@ -700,15 +596,6 @@ namespace Step23
 
               }
             }
-
-        // cell->get_dof_indices (local_dof_indices);
-        // for (unsigned int i=0; i<dofs_per_cell; ++i)
-        //   {
-        //     for (unsigned int j=0; j<dofs_per_cell; ++j)
-        //       mass_matrix.add (local_dof_indices[i],
-        //                          local_dof_indices[j],
-        //                          cell_matrix(i,j));
-        //   }
         
         cell->get_dof_indices (local_dof_indices);
         hanging_node_constraints
@@ -753,7 +640,6 @@ namespace Step23
         koko++;
         fe_values.reinit (cell);
         cell_matrix = 0;
-        // std::cout <<  "dddd " <<  koko <<std::endl;
         for (unsigned int q_index=0; q_index<n_q_points; ++q_index)
           for (unsigned int i=0; i<dofs_per_cell; ++i)
             {
@@ -766,15 +652,6 @@ namespace Step23
               }
             }
 
-        // cell->get_dof_indices (local_dof_indices);
-        // for (unsigned int i=0; i<dofs_per_cell; ++i)
-        //   {
-        //     for (unsigned int j=0; j<dofs_per_cell; ++j)
-        //       laplace_matrix.add (local_dof_indices[i],
-        //                          local_dof_indices[j],
-        //                          cell_matrix(i,j));
-          // }
-
         cell->get_dof_indices (local_dof_indices);
         hanging_node_constraints
         .distribute_local_to_global(cell_matrix, 
@@ -783,7 +660,6 @@ namespace Step23
       }
     }
     laplace_matrix.compress(VectorOperation::add);
-    // std::cout <<  "sss " <<  koko <<std::endl;
   }
 
     template <int dim>
@@ -865,21 +741,8 @@ namespace Step23
     }
     matrix_u.compress(VectorOperation::add);
     matrix_v.compress(VectorOperation::add);
-    // std::cout <<  "sss " <<  koko <<std::endl;
   }
 
-
-
-  // @sect4{WaveEquation::run}
-
-  // The following is really the only interesting function of the program. It
-  // contains the loop over all time steps, but before we get to that we have
-  // to set up the grid, DoFHandler, and matrices. In addition, we have to
-  // somehow get started with initial values. To this end, we use the
-  // VectorTools::project function that takes an object that describes a
-  // continuous function and computes the $L^2$ projection of this function
-  // onto the finite element space described by the DoFHandler object. Can't
-  // be any simpler than that:
   template <int dim>
   void WaveEquation<dim>::run ()
   {
@@ -895,39 +758,14 @@ namespace Step23
                           InitialValuesV<dim>(),
                           old_solution_v);
 
-    // matrix_u.compress ();
-    // matrix_v.compress ();
-
-    // The next thing is to loop over all the time steps until we reach the
-    // end time ($T=5$ in this case). In each time step, we first have to
-    // solve for $U^n$, using the equation $(M^n + k^2\theta^2 A^n)U^n =$
-    // $(M^{n,n-1} - k^2\theta(1-\theta) A^{n,n-1})U^{n-1} + kM^{n,n-1}V^{n-1}
-    // +$ $k\theta \left[k \theta F^n + k(1-\theta) F^{n-1} \right]$. Note
-    // that we use the same mesh for all time steps, so that $M^n=M^{n,n-1}=M$
-    // and $A^n=A^{n,n-1}=A$. What we therefore have to do first is to add up
-    // $MU^{n-1} - k^2\theta(1-\theta) AU^{n-1} + kMV^{n-1}$ and the forcing
-    // terms, and put the result into the <code>system_rhs</code> vector. (For
-    // these additions, we need a temporary vector that we declare before the
-    // loop to avoid repeated memory allocations in each time step.)
-    //
-    // The one thing to realize here is how we communicate the time variable
-    // to the object describing the right hand side: each object derived from
-    // the Function class has a time field that can be set using the
-    // Function::set_time and read by Function::get_time. In essence, using
-    // this mechanism, all functions of space and time are therefore
-    // considered functions of space evaluated at a particular time. This
-    // matches well what we typically need in finite element programs, where
-    // we almost always work on a single time step at a time, and where it
-    // never happens that, for example, one would like to evaluate a
-    // space-time function for all times at any given spatial location.
     PETScWrappers::MPI::Vector tmp (mpi_communicator, solution_u.size(), solution_u.local_size());
     PETScWrappers::MPI::Vector forcing_terms (mpi_communicator, solution_u.size(), solution_u.local_size());
 
-    PETScWrappers::MPI::Vector kkk (mpi_communicator, solution_u.size(), solution_u.local_size());
+    PETScWrappers::MPI::Vector k_rhs (mpi_communicator, solution_u.size(), solution_u.local_size());
 
-    for (unsigned int i=0; i<kkk.size(); ++i)
-      kkk(i) = 0;
-    kkk.compress (VectorOperation::add);
+    for (unsigned int i=0; i<k_rhs.size(); ++i)
+      k_rhs(i) = 0;
+    k_rhs.compress (VectorOperation::add);
 
     for (timestep_number=1, time=time_step;
          time<=2;
@@ -947,39 +785,13 @@ namespace Step23
         laplace_matrix.vmult (tmp, old_solution_u);
         system_rhs.add (-theta * (1-theta) * time_step * time_step, tmp);
 
-        /*
-        RightHandSide<dim> rhs_function;
-        rhs_function.set_time (time);
-        VectorTools::create_right_hand_side (dof_handler, QGauss<dim>(2),
-                                             rhs_function, tmp);
-        forcing_terms = tmp;
+        forcing_terms = k_rhs;
         forcing_terms *= theta * time_step;
 
-        rhs_function.set_time (time-time_step);
-        VectorTools::create_right_hand_side (dof_handler, QGauss<dim>(2),
-                                             rhs_function, tmp);
-
-        forcing_terms.add ((1-theta) * time_step, tmp);
-
-        system_rhs.add (theta * time_step, forcing_terms);
-        */
-        // forcing_terms = kkk;
-        for (unsigned int i=0; i<forcing_terms.size(); ++i)
-          forcing_terms(i) = 0;
-        forcing_terms.compress(VectorOperation::add);
-        forcing_terms *= theta * time_step;
-
-        forcing_terms.add ((1-theta) * time_step, kkk);
+        forcing_terms.add ((1-theta) * time_step, k_rhs);
 
         system_rhs.add (theta * time_step, forcing_terms);
 
-        // After so constructing the right hand side vector of the first
-        // equation, all we have to do is apply the correct boundary
-        // values. As for the right hand side, this is a space-time function
-        // evaluated at a particular time, which we interpolate at boundary
-        // nodes and then use the result to apply boundary values as we
-        // usually do. The result is then handed off to the solve_u()
-        // function:
         {
           BoundaryValuesU<dim> boundary_values_u_function;
           boundary_values_u_function.set_time (time);
@@ -990,29 +802,10 @@ namespace Step23
                                                     boundary_values_u_function,
                                                     boundary_values);
 
-          // The matrix for solve_u() is the same in every time steps, so one
-          // could think that it is enough to do this only once at the
-          // beginning of the simulation. However, since we need to apply
-          // boundary values to the linear system (which eliminate some matrix
-          // rows and columns and give contributions to the right hand side),
-          // we have to refill the matrix in every time steps before we
-          // actually apply boundary data. The actual content is very simple:
-          // it is the sum of the mass matrix and a weighted Laplace matrix:
-          // matrix_u.copy_from (mass_matrix);
-          // 
-          std::cout << "# e, matrix_v " << matrix_v.n_nonzero_elements () << std::endl;
-          std::cout << "# e, matrix_u " << matrix_u.n_nonzero_elements () << std::endl;
-          std::cout << "# e, mass_matrix " << mass_matrix.n_nonzero_elements () << std::endl << std::flush;
           const types::global_dof_index n_local_dofs
             = DoFTools::count_dofs_with_subdomain_association (dof_handler,
                                                          this_mpi_process);
-          // matrix_u.reinit(mpi_communicator,
-          //                 dof_handler.n_dofs(),
-          //                 dof_handler.n_dofs(),
-          //                 n_local_dofs,
-          //                 n_local_dofs,
-          //                 dof_handler.max_couplings_between_dofs());
-          // matrix_u.compress ();
+    
           matrix_u.copy_from(mass_matrix);
           matrix_u.add (laplace_matrix, theta * theta * time_step * time_step);
           MatrixTools::apply_boundary_values (boundary_values,
@@ -1023,13 +816,6 @@ namespace Step23
         solve_u ();
 
 
-        // The second step, i.e. solving for $V^n$, works similarly, except
-        // that this time the matrix on the left is the mass matrix (which we
-        // copy again in order to be able to apply boundary conditions, and
-        // the right hand side is $MV^{n-1} - k\left[ \theta A U^n +
-        // (1-\theta) AU^{n-1}\right]$ plus forcing terms. %Boundary values
-        // are applied in the same way as before, except that now we have to
-        // use the BoundaryValuesV class:
         laplace_matrix.vmult (system_rhs, solution_u);
         system_rhs *= -theta * time_step;
 
@@ -1055,15 +841,6 @@ namespace Step23
             = DoFTools::count_dofs_with_subdomain_association (dof_handler,
                                                          this_mpi_process);
 
-          
-
-          // matrix_v.reinit(mpi_communicator,
-          //                 dof_handler.n_dofs(),
-          //                 dof_handler.n_dofs(),
-          //                 n_local_dofs,
-          //                 n_local_dofs,
-          //                 dof_handler.max_couplings_between_dofs());
-          // matrix_v.compress ();
           matrix_v.copy_from (mass_matrix);
           MatrixTools::apply_boundary_values (boundary_values,
                                               matrix_v,
@@ -1072,15 +849,9 @@ namespace Step23
         }
         solve_v ();
 
-        // Finally, after both solution components have been computed, we
-        // output the result, compute the energy in the solution, and go on to
-        // the next time step after shifting the present solution into the
-        // vectors that hold the solution at the previous time step. Note the
-        // function SparseMatrix::matrix_norm_square that can compute
-        // $\left<V^n,MV^n\right>$ and $\left<U^n,AU^n\right>$ in one step,
-        // saving us the expense of a temporary vector and several lines of
-        // code:
+
         output_results ();
+
 
         pcout << "   Total energy: "
                   << (mass_matrix.matrix_norm_square (solution_v) +
@@ -1111,7 +882,6 @@ int main (int argc, char **argv)
 
       WaveEquation<2> wave_equation_solver;
       wave_equation_solver.run ();
-      // wave_equation_solver.test ();
     }
   catch (std::exception &exc)
     {
