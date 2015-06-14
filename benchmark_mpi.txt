@@ -1,0 +1,443 @@
+## 1
+Processes: 1
+Refine_times: 7
+ Time_limitation 5
+Number of active cells: 16384
+Number of degrees of freedom: 16641
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |       372s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| assemble_laplace_matrix         |         1 |     0.428s |      0.11% |
+| assemble_mass_matrix            |         1 |     0.475s |      0.13% |
+| reshape                         |       320 |       158s |        43% |
+| run                             |         1 |       371s |     1e+02% |
+| setup                           |         1 |      1.36s |      0.36% |
+| solve_u                         |       320 |     0.612s |      0.16% |
+| solve_v                         |       320 |      1.47s |       0.4% |
++---------------------------------+-----------+------------+------------+
+
+
+
++---------------------------------------------+------------+------------+
+| Total CPU time elapsed since start          |       530s |            |
+|                                             |            |            |
+| Section                         | no. calls |  CPU time  | % of total |
++---------------------------------+-----------+------------+------------+
+| assemble_laplace_matrix         |         1 |     0.425s |      0.08% |
+| assemble_mass_matrix            |         1 |     0.456s |     0.086% |
+| reshape                         |       320 |       158s |        30% |
+| run                             |         1 |       367s |        69% |
+| setup                           |         1 |      1.29s |      0.24% |
+| solve_u                         |       320 |     0.601s |      0.11% |
+| solve_v                         |       320 |      1.47s |      0.28% |
++---------------------------------+-----------+------------+------------+
+
+## 2
+Processes: 2
+Refine_times: 7
+ Time_limitation 5
+Number of active cells: 16384
+Number of degrees of freedom: 16641
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |       297s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| assemble_laplace_matrix         |         1 |     0.218s |     0.073% |
+| assemble_mass_matrix            |         1 |     0.234s |     0.079% |
+| reshape                         |       320 |      84.6s |        28% |
+| run                             |         1 |       296s |     1e+02% |
+| setup                           |         1 |     0.937s |      0.32% |
+| solve_u                         |       320 |     0.304s |       0.1% |
+| solve_v                         |       320 |     0.716s |      0.24% |
++---------------------------------+-----------+------------+------------+
+
+
+
++---------------------------------------------+------------+------------+
+| Total CPU time elapsed since start          |  1.52e+03s |            |
+|                                             |            |            |
+| Section                         | no. calls |  CPU time  | % of total |
++---------------------------------+-----------+------------+------------+
+| assemble_laplace_matrix         |         1 |     0.869s |     0.057% |
+| assemble_mass_matrix            |         1 |     0.931s |     0.061% |
+| reshape                         |       320 |       338s |        22% |
+| run                             |         1 |  1.18e+03s |        77% |
+| setup                           |         1 |      3.72s |      0.24% |
+| solve_u                         |       320 |      1.23s |     0.081% |
+| solve_v                         |       320 |      2.88s |      0.19% |
++---------------------------------+-----------+------------+------------+
+
+##3
+Processes: 4
+Refine_times: 7
+ Time_limitation 5
+Number of active cells: 16384
+Number of degrees of freedom: 16641
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |       294s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| assemble_laplace_matrix         |         1 |     0.115s |     0.039% |
+| assemble_mass_matrix            |         1 |     0.127s |     0.043% |
+| reshape                         |       320 |      55.6s |        19% |
+| run                             |         1 |       293s |     1e+02% |
+| setup                           |         1 |     0.766s |      0.26% |
+| solve_u                         |       320 |     0.249s |     0.085% |
+| solve_v                         |       320 |     0.504s |      0.17% |
++---------------------------------+-----------+------------+------------+
+
+
+
++---------------------------------------------+------------+------------+
+| Total CPU time elapsed since start          |  5.54e+03s |            |
+|                                             |            |            |
+| Section                         | no. calls |  CPU time  | % of total |
++---------------------------------+-----------+------------+------------+
+| assemble_laplace_matrix         |         1 |      1.83s |     0.033% |
+| assemble_mass_matrix            |         1 |      2.01s |     0.036% |
+| reshape                         |       320 |       876s |        16% |
+| run                             |         1 |  4.64e+03s |        84% |
+| setup                           |         1 |        12s |      0.22% |
+| solve_u                         |       320 |      4.05s |     0.073% |
+| solve_v                         |       320 |      8.13s |      0.15% |
++---------------------------------+-----------+------------+------------+
+
+##4
+Processes: 8
+Refine_times: 7
+ Time_limitation 5
+Number of active cells: 16384
+Number of degrees of freedom: 16641
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |       457s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| assemble_laplace_matrix         |         1 |     0.107s |     0.024% |
+| assemble_mass_matrix            |         1 |     0.111s |     0.024% |
+| reshape                         |       320 |        49s |        11% |
+| run                             |         1 |       456s |     1e+02% |
+| setup                           |         1 |      1.12s |      0.25% |
+| solve_u                         |       320 |     0.566s |      0.12% |
+| solve_v                         |       320 |       1.3s |      0.29% |
++---------------------------------+-----------+------------+------------+
+
+
+
++---------------------------------------------+------------+------------+
+| Total CPU time elapsed since start          |  1.49e+04s |            |
+|                                             |            |            |
+| Section                         | no. calls |  CPU time  | % of total |
++---------------------------------+-----------+------------+------------+
+| assemble_laplace_matrix         |         1 |      6.37s |     0.043% |
+| assemble_mass_matrix            |         1 |       6.4s |     0.043% |
+| reshape                         |       320 |  2.73e+03s |        18% |
+| run                             |         1 |   1.2e+04s |        81% |
+| setup                           |         1 |      68.1s |      0.46% |
+| solve_u                         |       320 |      19.8s |      0.13% |
+| solve_v                         |       320 |      43.5s |      0.29% |
++---------------------------------+-----------+------------+------------+
+
+
+------------------------------------
+
+------------------------------------
+
+### 1
+Processes: 1
+Refine_times: 7
+ Time_limitation 1
+Number of active cells: 16384
+Number of degrees of freedom: 16641
+
+
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |      75.9s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| assemble_laplace_matrix         |         1 |     0.424s |      0.56% |
+| assemble_mass_matrix            |         1 |     0.466s |      0.61% |
+| reshape                         |        64 |      31.5s |        41% |
+| run                             |         1 |      74.5s |        98% |
+| setup                           |         1 |      1.34s |       1.8% |
+| solve_u                         |        64 |     0.133s |      0.18% |
+| solve_v                         |        64 |     0.293s |      0.39% |
++---------------------------------+-----------+------------+------------+
+
+
+
++---------------------------------------------+------------+------------+
+| Total CPU time elapsed since start          |       108s |            |
+|                                             |            |            |
+| Section                         | no. calls |  CPU time  | % of total |
++---------------------------------+-----------+------------+------------+
+| assemble_laplace_matrix         |         1 |     0.421s |      0.39% |
+| assemble_mass_matrix            |         1 |     0.447s |      0.42% |
+| reshape                         |        64 |      31.4s |        29% |
+| run                             |         1 |      73.7s |        68% |
+| setup                           |         1 |      1.26s |       1.2% |
+| solve_u                         |        64 |     0.123s |      0.11% |
+| solve_v                         |        64 |     0.293s |      0.27% |
++---------------------------------+-----------+------------+------------+
+
+### 2
+Processes: 2
+Refine_times: 7
+ Time_limitation 1
+Number of active cells: 16384
+Number of degrees of freedom: 16641
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |      60.7s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| assemble_laplace_matrix         |         1 |     0.219s |      0.36% |
+| assemble_mass_matrix            |         1 |     0.236s |      0.39% |
+| reshape                         |        64 |      16.9s |        28% |
+| run                             |         1 |      59.8s |        98% |
+| setup                           |         1 |     0.949s |       1.6% |
+| solve_u                         |        64 |    0.0622s |       0.1% |
+| solve_v                         |        64 |     0.143s |      0.24% |
++---------------------------------+-----------+------------+------------+
+
+
+
++---------------------------------------------+------------+------------+
+| Total CPU time elapsed since start          |       311s |            |
+|                                             |            |            |
+| Section                         | no. calls |  CPU time  | % of total |
++---------------------------------+-----------+------------+------------+
+| assemble_laplace_matrix         |         1 |      0.87s |      0.28% |
+| assemble_mass_matrix            |         1 |     0.933s |       0.3% |
+| reshape                         |        64 |      67.3s |        22% |
+| run                             |         1 |       237s |        76% |
+| setup                           |         1 |      3.73s |       1.2% |
+| solve_u                         |        64 |     0.251s |     0.081% |
+| solve_v                         |        64 |     0.574s |      0.18% |
++---------------------------------+-----------+------------+------------+
+
+
+
+### 3
+Processes: 4
+Refine_times: 7
+ Time_limitation 1
+Number of active cells: 16384
+Number of degrees of freedom: 16641
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |      60.4s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| assemble_laplace_matrix         |         1 |     0.117s |      0.19% |
+| assemble_mass_matrix            |         1 |     0.128s |      0.21% |
+| reshape                         |        64 |      11.1s |        18% |
+| run                             |         1 |      59.7s |        99% |
+| setup                           |         1 |     0.748s |       1.2% |
+| solve_u                         |        64 |    0.0571s |     0.095% |
+| solve_v                         |        64 |     0.106s |      0.17% |
++---------------------------------+-----------+------------+------------+
+
+
+
++---------------------------------------------+------------+------------+
+| Total CPU time elapsed since start          |  1.14e+03s |            |
+|                                             |            |            |
+| Section                         | no. calls |  CPU time  | % of total |
++---------------------------------+-----------+------------+------------+
+| assemble_laplace_matrix         |         1 |      1.86s |      0.16% |
+| assemble_mass_matrix            |         1 |      2.03s |      0.18% |
+| reshape                         |        64 |       175s |        15% |
+| run                             |         1 |       944s |        83% |
+| setup                           |         1 |      11.9s |         1% |
+| solve_u                         |        64 |     0.907s |      0.08% |
+| solve_v                         |        64 |      1.69s |      0.15% |
++---------------------------------+-----------+------------+------------+
+
+### 4
+Processes: 8
+Refine_times: 7
+ Time_limitation 1
+Number of active cells: 16384
+Number of degrees of freedom: 16641
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |      92.4s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| assemble_laplace_matrix         |         1 |     0.102s |      0.11% |
+| assemble_mass_matrix            |         1 |      0.11s |      0.12% |
+| reshape                         |        64 |      10.1s |        11% |
+| run                             |         1 |      91.3s |        99% |
+| setup                           |         1 |      1.12s |       1.2% |
+| solve_u                         |        64 |     0.115s |      0.12% |
+| solve_v                         |        64 |     0.262s |      0.28% |
++---------------------------------+-----------+------------+------------+
+
+
+
++---------------------------------------------+------------+------------+
+| Total CPU time elapsed since start          |  3.13e+03s |            |
+|                                             |            |            |
+| Section                         | no. calls |  CPU time  | % of total |
++---------------------------------+-----------+------------+------------+
+| assemble_laplace_matrix         |         1 |      6.36s |       0.2% |
+| assemble_mass_matrix            |         1 |      6.71s |      0.21% |
+| reshape                         |        64 |       561s |        18% |
+| run                             |         1 |  2.47e+03s |        79% |
+| setup                           |         1 |      69.3s |       2.2% |
+| solve_u                         |        64 |      4.03s |      0.13% |
+| solve_v                         |        64 |      8.78s |      0.28% |
++---------------------------------+-----------+------------+------------+
+
+### 5
+Processes: 1
+Refine_times: 8
+ Time_limitation 1
+Number of active cells: 65536
+Number of degrees of freedom: 66049
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |       306s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| assemble_laplace_matrix         |         1 |      1.68s |      0.55% |
+| assemble_mass_matrix            |         1 |      1.81s |      0.59% |
+| reshape                         |        64 |       126s |        41% |
+| run                             |         1 |       301s |        98% |
+| setup                           |         1 |      5.06s |       1.7% |
+| solve_u                         |        64 |      1.02s |      0.33% |
+| solve_v                         |        64 |      1.21s |       0.4% |
++---------------------------------+-----------+------------+------------+
+
+
+
++---------------------------------------------+------------+------------+
+| Total CPU time elapsed since start          |       434s |            |
+|                                             |            |            |
+| Section                         | no. calls |  CPU time  | % of total |
++---------------------------------+-----------+------------+------------+
+| assemble_laplace_matrix         |         1 |      1.67s |      0.39% |
+| assemble_mass_matrix            |         1 |      1.81s |      0.42% |
+| reshape                         |        64 |       125s |        29% |
+| run                             |         1 |       298s |        69% |
+| setup                           |         1 |      5.03s |       1.2% |
+| solve_u                         |        64 |      1.02s |      0.23% |
+| solve_v                         |        64 |      1.21s |      0.28% |
++---------------------------------+-----------+------------+------------+
+
+### 6
+Processes: 2
+Refine_times: 8
+ Time_limitation 1
+Number of active cells: 65536
+Number of degrees of freedom: 66049
+
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |       249s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| assemble_laplace_matrix         |         1 |     0.878s |      0.35% |
+| assemble_mass_matrix            |         1 |     0.948s |      0.38% |
+| reshape                         |        64 |      68.1s |        27% |
+| run                             |         1 |       246s |        98% |
+| setup                           |         1 |      3.76s |       1.5% |
+| solve_u                         |        64 |     0.629s |      0.25% |
+| solve_v                         |        64 |     0.723s |      0.29% |
++---------------------------------+-----------+------------+------------+
+
+
+
++---------------------------------------------+------------+------------+
+| Total CPU time elapsed since start          |  1.27e+03s |            |
+|                                             |            |            |
+| Section                         | no. calls |  CPU time  | % of total |
++---------------------------------+-----------+------------+------------+
+| assemble_laplace_matrix         |         1 |      3.49s |      0.27% |
+| assemble_mass_matrix            |         1 |      3.76s |       0.3% |
+| reshape                         |        64 |       271s |        21% |
+| run                             |         1 |       972s |        77% |
+| setup                           |         1 |      14.9s |       1.2% |
+| solve_u                         |        64 |      2.47s |      0.19% |
+| solve_v                         |        64 |      2.88s |      0.23% |
++---------------------------------+-----------+------------+------------+
+
+### 7
+Processes: 4
+Refine_times: 8
+ Time_limitation 1
+Number of active cells: 65536
+Number of degrees of freedom: 66049
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |       234s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| assemble_laplace_matrix         |         1 |     0.463s |       0.2% |
+| assemble_mass_matrix            |         1 |     0.495s |      0.21% |
+| reshape                         |        64 |      38.2s |        16% |
+| run                             |         1 |       231s |        99% |
+| setup                           |         1 |      3.03s |       1.3% |
+| solve_u                         |        64 |     0.479s |      0.21% |
+| solve_v                         |        64 |     0.645s |      0.28% |
++---------------------------------+-----------+------------+------------+
+
+
+
++---------------------------------------------+------------+------------+
+| Total CPU time elapsed since start          |  4.35e+03s |            |
+|                                             |            |            |
+| Section                         | no. calls |  CPU time  | % of total |
++---------------------------------+-----------+------------+------------+
+| assemble_laplace_matrix         |         1 |      7.33s |      0.17% |
+| assemble_mass_matrix            |         1 |      7.84s |      0.18% |
+| reshape                         |        64 |       608s |        14% |
+| run                             |         1 |  3.66e+03s |        84% |
+| setup                           |         1 |      47.7s |       1.1% |
+| solve_u                         |        64 |      7.65s |      0.18% |
+| solve_v                         |        64 |      10.3s |      0.24% |
++---------------------------------+-----------+------------+------------+
+
+
+### 8
+Processes: 8
+Refine_times: 8
+ Time_limitation 1
+Number of active cells: 65536
+Number of degrees of freedom: 66049
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |       375s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| assemble_laplace_matrix         |         1 |     0.433s |      0.12% |
+| assemble_mass_matrix            |         1 |     0.451s |      0.12% |
+| reshape                         |        64 |      38.8s |        10% |
+| run                             |         1 |       370s |        99% |
+| setup                           |         1 |      4.74s |       1.3% |
+| solve_u                         |        64 |     0.684s |      0.18% |
+| solve_v                         |        64 |     0.865s |      0.23% |
++---------------------------------+-----------+------------+------------+
+
+
+
++---------------------------------------------+------------+------------+
+| Total CPU time elapsed since start          |  1.26e+04s |            |
+|                                             |            |            |
+| Section                         | no. calls |  CPU time  | % of total |
++---------------------------------+-----------+------------+------------+
+| assemble_laplace_matrix         |         1 |      25.1s |       0.2% |
+| assemble_mass_matrix            |         1 |      25.9s |      0.21% |
+| reshape                         |        64 |  2.21e+03s |        17% |
+| run                             |         1 |     1e+04s |        79% |
+| setup                           |         1 |       276s |       2.2% |
+| solve_u                         |        64 |      32.2s |      0.25% |
+| solve_v                         |        64 |      35.9s |      0.28% |
++---------------------------------+-----------+------------+------------+
+

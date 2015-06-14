@@ -188,7 +188,7 @@ namespace Step23
   class WaveEquation
   {
   public:
-    WaveEquation ();
+    WaveEquation (unsigned int p_refine_times, double p_time_limitation);
     void run ();
     void test ();
 
@@ -217,9 +217,14 @@ namespace Step23
     PETScWrappers::MPI::Vector       old_solution_u, old_solution_v;
     PETScWrappers::MPI::Vector       system_rhs;
 
-    double time, time_step;
+    unsigned int refine_times;
+
+    double time, time_step, time_limitation;
     unsigned int timestep_number;
     const double theta;
+
+    
+
     MPI_Comm mpi_communicator;
 
     const unsigned int n_mpi_processes;
@@ -233,10 +238,14 @@ namespace Step23
 
 
   template <int dim>
-  WaveEquation<dim>::WaveEquation () :
+  WaveEquation<dim>::WaveEquation (unsigned int p_refine_times, double p_time_limitation) :
+
+
     fe (1),
     dof_handler (triangulation),
+    refine_times (p_refine_times),
     time_step (1./64),
+    time_limitation (p_time_limitation),
     theta (0.5),
     mpi_communicator (MPI_COMM_WORLD),
     n_mpi_processes (Utilities::MPI::n_mpi_processes(mpi_communicator)),
@@ -253,6 +262,7 @@ namespace Step23
                      pcout,
                      TimerOutput::summary,
                      TimerOutput::wall_times)
+    
 
   {
     pcout.set_condition(this_mpi_process == 0);
@@ -266,7 +276,7 @@ namespace Step23
 
 
     GridGenerator::hyper_cube (triangulation, -1, 1);
-    triangulation.refine_global (5);
+    triangulation.refine_global (refine_times);
 
     pcout << "Number of active cells: "
               << triangulation.n_active_cells()
@@ -642,7 +652,7 @@ namespace Step23
     k_rhs.compress (VectorOperation::add);
 
     for (timestep_number=1, time=time_step;
-         time<=2;
+         time<=time_limitation;
          time+=time_step, ++timestep_number)
       {
         pcout << "Time step " << timestep_number
@@ -745,10 +755,19 @@ int main (int argc, char **argv)
     {
       using namespace dealii;
       using namespace Step23;
+
+      if (argc < 3) {
+        std::cout << "Usage: mpirun -np 4 " << argv[0] << " refine_times " << " time_limitation " << std::endl;
+        exit(1);
+      }
+      std::cout << "Refine_times: " << argv[1] << std::endl << " Time_limitation " << argv[2] <<  std::endl;
+      unsigned int refine_times = (unsigned int) std::atoi(argv[1]);
+      double time_limitation = std::atof(argv[2]);
+
       Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv, 1);
       deallog.depth_console (0);
 
-      WaveEquation<2> wave_equation_solver;
+      WaveEquation<2> wave_equation_solver(refine_times, time_limitation);
       wave_equation_solver.run ();
     }
   catch (std::exception &exc)
