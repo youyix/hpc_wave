@@ -47,7 +47,9 @@
 
 #include <deal.II/numerics/data_out.h>
 
- #include <deal.II/lac/petsc_solver.h>
+#include <deal.II/lac/petsc_solver.h>
+
+#include <deal.II/base/timer.h>
 
 #include <fstream>
 #include <iostream>
@@ -288,6 +290,11 @@ namespace Step23
     unsigned int timestep_number;
     const double theta;
     MPI_Comm mpi_communicator;
+
+    ConditionalOStream                        pcout;
+
+    TimerOutput                               computing_timer;
+    TimerOutput                               computing_timer_wall;
   };
 
 
@@ -315,7 +322,20 @@ namespace Step23
     dof_handler (triangulation),
     time_step (1./64),
     theta (0.5),
-    mpi_communicator (MPI_COMM_WORLD)
+    mpi_communicator (MPI_COMM_WORLD),
+    pcout (std::cout,
+           (Utilities::MPI::this_mpi_process(mpi_communicator)
+            == 0)),
+    computing_timer (mpi_communicator,
+                     pcout,
+                     TimerOutput::summary,
+                     // TimerOutput::wall_times,
+                     TimerOutput::cpu_times),
+    computing_timer_wall (mpi_communicator,
+                     pcout,
+                     TimerOutput::summary,
+                     TimerOutput::wall_times)
+
   {}
 
 
@@ -328,6 +348,8 @@ namespace Step23
   template <int dim>
   void WaveEquation<dim>::setup_system ()
   {
+    TimerOutput::Scope t(computing_timer, "setup");
+    TimerOutput::Scope twall(computing_timer_wall, "setup");
     GridGenerator::hyper_cube (triangulation, -1, 1);
     triangulation.refine_global (5);
 
@@ -427,6 +449,8 @@ namespace Step23
   template <int dim>
   void WaveEquation<dim>::solve_u ()
   {
+    TimerOutput::Scope t(computing_timer, "solve_u");
+    TimerOutput::Scope twall(computing_timer_wall, "solve_u");
     SolverControl           solver_control (1000, 1e-8*system_rhs.l2_norm());
     SolverCG<>              cg (solver_control);
 
@@ -447,6 +471,8 @@ namespace Step23
   template <int dim>
   void WaveEquation<dim>::solve_v ()
   {
+    TimerOutput::Scope t(computing_timer, "solve_v");
+    TimerOutput::Scope twall(computing_timer_wall, "solve_v");
     SolverControl           solver_control (1000, 1e-8*system_rhs.l2_norm());
     SolverCG<>              cg (solver_control);
 
@@ -541,6 +567,8 @@ namespace Step23
   template <int dim>
   void WaveEquation<dim>::assemble_mass_matrix ()
   {
+    TimerOutput::Scope t(computing_timer, "assemble_mass_matrix");
+    TimerOutput::Scope twall(computing_timer_wall, "assemble_mass_matrix");
     QGauss<dim>   quadrature_formula(3);
     FEValues<dim> fe_values (fe, quadrature_formula,
                              update_values   | update_gradients |
@@ -594,6 +622,8 @@ namespace Step23
   template <int dim>
   void WaveEquation<dim>::assemble_laplace_matrix ()
   {
+    TimerOutput::Scope t(computing_timer, "assemble_laplace_matrix");
+    TimerOutput::Scope twall(computing_timer_wall, "assemble_laplace_matrix");
     QGauss<dim>   quadrature_formula(3);
     FEValues<dim> fe_values (fe, quadrature_formula,
                              update_values   | update_gradients |
@@ -660,6 +690,8 @@ namespace Step23
   void WaveEquation<dim>::run ()
   {
     setup_system();
+    TimerOutput::Scope t(computing_timer, "run");
+    TimerOutput::Scope twall(computing_timer_wall, "run");
 
     VectorTools::project (dof_handler, constraints, QGauss<dim>(3),
                           InitialValuesU<dim>(),

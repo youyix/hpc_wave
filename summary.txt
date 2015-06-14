@@ -1,0 +1,35 @@
+Benckmark:
+Refine_times: 5
+Number of active cells: 1024
+Number of degrees of freedom: 1089
+Domain: HyperCube
+Bounday: xxx
+
++---------------------------------------------+------------+------------+
+| Total wallclock time elapsed since start    |        20s |            |
+|                                             |            |            |
+| Section                         | no. calls |  wall time | % of total |
++---------------------------------+-----------+------------+------------+
+| assemble_laplace_matrix         |         1 |    0.0241s |      0.12% |
+| assemble_mass_matrix            |         1 |     0.032s |      0.16% |
+| run                             |         1 |      19.9s |        99% |
+| setup                           |         1 |     0.126s |      0.63% |
+| solve_u                         |       320 |     0.701s |       3.5% |
+| solve_v                         |       320 |     0.851s |       4.2% |
++---------------------------------+-----------+------------+------------+
+
+
+
++---------------------------------------------+------------+------------+
+| Total CPU time elapsed since start          |      21.3s |            |
+|                                             |            |            |
+| Section                         | no. calls |  CPU time  | % of total |
++---------------------------------+-----------+------------+------------+
+| assemble_laplace_matrix         |         1 |    0.0242s |      0.11% |
+| assemble_mass_matrix            |         1 |    0.0264s |      0.12% |
+| run                             |         1 |      19.6s |        92% |
+| setup                           |         1 |    0.0746s |      0.35% |
+| solve_u                         |       320 |     0.701s |       3.3% |
+| solve_v                         |       320 |     0.853s |         4% |
++---------------------------------+-----------+------------+------------+
+
