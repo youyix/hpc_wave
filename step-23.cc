@@ -351,30 +351,21 @@ namespace Step23
     TimerOutput::Scope t(computing_timer, "solve_u");
     TimerOutput::Scope twall(computing_timer_wall, "solve_u");
     SolverControl           solver_control (1000, 1e-8*system_rhs.l2_norm());
-    // SolverCG<>              cg (solver_control);
-
-    // // SolverControl cn;
-    // // PETScWrappers::SparseDirectMUMPS solver(cn, mpi_communicator);
-    // // // solver.set_symmetric_mode(true);
-    // // solver.solve(matrix_u, solution_u, system_rhs);
-
-    // cg.solve (matrix_u, solution_u, system_rhs,
-    //           PreconditionIdentity());
-
-    // std::cout << "   u-equation: " << solver_control.last_step()
-    //           << " CG iterations."
-    //           << std::endl;
-    //           
     
-    PETScWrappers::SolverCG cg (solver_control,
-                                mpi_communicator);
-
+    PETScWrappers::SolverCG solver (solver_control, mpi_communicator);
     PETScWrappers::PreconditionNone preconditioner(matrix_u);
+    solver.solve (matrix_v, solution_v, system_rhs, preconditioner);
 
-    cg.solve (matrix_u, solution_u, system_rhs, preconditioner);
+    // PETScWrappers::SparseDirectMUMPS solver(solver_control, mpi_communicator);
+    // solver.set_symmetric_mode(true);
+    // solver.solve (matrix_u, solution_u, system_rhs);
+    
+    // PETScWrappers::SparseDirectMUMPS solver(solver_control, mpi_communicator);
+    // PETScWrappers::PreconditionLU preconditioner(matrix_u);
+    // solver.solve (matrix_u, solution_u, system_rhs, preconditioner);
 
     pcout << "   u-equation: " << solver_control.last_step()
-              << " CG iterations."
+              << "  iterations."
               << std::endl;
   }
 
@@ -385,20 +376,21 @@ namespace Step23
     TimerOutput::Scope t(computing_timer, "solve_v");
     TimerOutput::Scope twall(computing_timer_wall, "solve_v");
     SolverControl           solver_control (1000, 1e-8*system_rhs.l2_norm());
-    // SolverCG<>              cg (solver_control);
-
-    // cg.solve (matrix_v, solution_v, system_rhs,
-    //           PreconditionIdentity());
-    //           
-    PETScWrappers::SolverCG cg (solver_control,
-                                mpi_communicator);
-    //           
+    
+    PETScWrappers::SolverCG solver (solver_control, mpi_communicator);
     PETScWrappers::PreconditionNone preconditioner(matrix_v);
+    solver.solve (matrix_v, solution_v, system_rhs, preconditioner);
 
-    cg.solve (matrix_v, solution_v, system_rhs, preconditioner);
+    // PETScWrappers::SparseDirectMUMPS solver(solver_control, mpi_communicator);
+    // solver.set_symmetric_mode(true);
+    // solver.solve (matrix_v, solution_v, system_rhs);
+
+    // PETScWrappers::SparseDirectMUMPS solver(solver_control, mpi_communicator);
+    // PETScWrappers::PreconditionLU preconditioner(matrix_v);
+    // solver.solve (matrix_v, solution_v, system_rhs, preconditioner);
 
     pcout << "   v-equation: " << solver_control.last_step()
-              << " CG iterations."
+              << "  iterations."
               << std::endl;
   }
 
