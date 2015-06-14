@@ -199,7 +199,7 @@ namespace Step23
     void output_results () const;
     void assemble_mass_matrix ();
     void assemble_laplace_matrix ();
-    void hehe ();
+    void reshape ();
     
 
     Triangulation<dim>   triangulation;
