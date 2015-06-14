@@ -293,6 +293,7 @@ namespace Step23
     void output_results () const;
     void assemble_mass_matrix ();
     void assemble_laplace_matrix ();
+    void hehe ();
     
 
     Triangulation<dim>   triangulation;
@@ -584,20 +585,23 @@ namespace Step23
   template <int dim>
   void WaveEquation<dim>::output_results () const
   {
-    DataOut<dim> data_out;
+    if ( this_mpi_process == 0 ) {
+      DataOut<dim> data_out;
 
-    data_out.attach_dof_handler (dof_handler);
-    data_out.add_data_vector (solution_u, "U");
-    data_out.add_data_vector (solution_v, "V");
+      data_out.attach_dof_handler (dof_handler);
+      data_out.add_data_vector (solution_u, "U");
+      data_out.add_data_vector (solution_v, "V");
 
-    data_out.build_patches ();
+      data_out.build_patches ();
 
-    const std::string filename = "solution-" +
-                                 Utilities::int_to_string (timestep_number, 3) +
-                                 ".vtk";
-    std::ofstream output (filename.c_str());
-    // data_out.write_gnuplot (output);
-    data_out.write_vtk (output);
+      const std::string filename = "solution-" +
+                                   Utilities::int_to_string (timestep_number, 3) +
+                                   ".vtk";
+      std::ofstream output (filename.c_str());
+      // data_out.write_gnuplot (output);
+      data_out.write_vtk (output);
+    }
+    
   }
 
   template <int dim>
@@ -697,25 +701,24 @@ namespace Step23
               }
             }
 
-        cell->get_dof_indices (local_dof_indices);
-        for (unsigned int i=0; i<dofs_per_cell; ++i)
-          {
-            for (unsigned int j=0; j<dofs_per_cell; ++j)
-              mass_matrix.add (local_dof_indices[i],
-                                 local_dof_indices[j],
-                                 cell_matrix(i,j));
-          }
+        // cell->get_dof_indices (local_dof_indices);
+        // for (unsigned int i=0; i<dofs_per_cell; ++i)
+        //   {
+        //     for (unsigned int j=0; j<dofs_per_cell; ++j)
+        //       mass_matrix.add (local_dof_indices[i],
+        //                          local_dof_indices[j],
+        //                          cell_matrix(i,j));
+        //   }
         
         cell->get_dof_indices (local_dof_indices);
         hanging_node_constraints
         .distribute_local_to_global(cell_matrix, 
-                                    cell_rhs,
                                     local_dof_indices,
                                     mass_matrix); 
       }
       
     }
-
+    mass_matrix.compress(VectorOperation::add);
   }
 
   template <int dim>
@@ -763,23 +766,105 @@ namespace Step23
               }
             }
 
-        cell->get_dof_indices (local_dof_indices);
-        for (unsigned int i=0; i<dofs_per_cell; ++i)
-          {
-            for (unsigned int j=0; j<dofs_per_cell; ++j)
-              laplace_matrix.add (local_dof_indices[i],
-                                 local_dof_indices[j],
-                                 cell_matrix(i,j));
-          }
+        // cell->get_dof_indices (local_dof_indices);
+        // for (unsigned int i=0; i<dofs_per_cell; ++i)
+        //   {
+        //     for (unsigned int j=0; j<dofs_per_cell; ++j)
+        //       laplace_matrix.add (local_dof_indices[i],
+        //                          local_dof_indices[j],
+        //                          cell_matrix(i,j));
+          // }
 
         cell->get_dof_indices (local_dof_indices);
         hanging_node_constraints
         .distribute_local_to_global(cell_matrix, 
-                                    cell_rhs,
                                     local_dof_indices,
                                     laplace_matrix); 
       }
     }
+    laplace_matrix.compress(VectorOperation::add);
+    // std::cout <<  "sss " <<  koko <<std::endl;
+  }
+
+    template <int dim>
+  void WaveEquation<dim>::hehe ()
+  {
+    TimerOutput::Scope t(computing_timer, "hehe");
+    TimerOutput::Scope twall(computing_timer_wall, "hehe");
+
+    const types::global_dof_index n_local_dofs
+      = DoFTools::count_dofs_with_subdomain_association (dof_handler,
+                                                         this_mpi_process);
+
+    matrix_u.reinit (mpi_communicator,
+                          dof_handler.n_dofs(),
+                          dof_handler.n_dofs(),
+                          n_local_dofs,
+                          n_local_dofs,
+                          dof_handler.max_couplings_between_dofs());
+
+    matrix_v.reinit (mpi_communicator,
+                          dof_handler.n_dofs(),
+                          dof_handler.n_dofs(),
+                          n_local_dofs,
+                          n_local_dofs,
+                          dof_handler.max_couplings_between_dofs());
+
+
+    QGauss<dim>   quadrature_formula(3);
+    FEValues<dim> fe_values (fe, quadrature_formula,
+                             update_values   | update_gradients |
+                             update_quadrature_points | update_JxW_values);
+
+    const unsigned int   dofs_per_cell = fe.dofs_per_cell;
+
+    const unsigned int   n_q_points    = quadrature_formula.size();
+
+
+    FullMatrix<double>   cell_matrix (dofs_per_cell, dofs_per_cell);
+    Vector<double>       cell_rhs (dofs_per_cell);
+    std::vector<types::global_dof_index> local_dof_indices (dofs_per_cell);
+
+    
+    typename DoFHandler<dim>::active_cell_iterator
+      cell = dof_handler.begin_active(),
+      endc = dof_handler.end();
+
+    int koko = 0;
+    for (; cell!=endc; ++cell)
+    {
+      if (cell->subdomain_id() == this_mpi_process)
+      {
+        koko++;
+        fe_values.reinit (cell);
+        cell_matrix = 0;
+
+        for (unsigned int q_index=0; q_index<n_q_points; ++q_index)
+          for (unsigned int i=0; i<dofs_per_cell; ++i)
+            {
+              for (unsigned int j=0; j<dofs_per_cell; ++j) 
+              {
+                cell_matrix(i,j) += (fe_values.shape_value (i, q_index) *
+                                     fe_values.shape_value (j, q_index) *
+                                     fe_values.JxW (q_index));
+
+              }
+            }
+
+        cell->get_dof_indices (local_dof_indices);
+        hanging_node_constraints
+        .distribute_local_to_global(cell_matrix, 
+                                    local_dof_indices,
+                                    matrix_u); 
+        hanging_node_constraints
+        .distribute_local_to_global(cell_matrix, 
+                                    local_dof_indices,
+                                    matrix_v); 
+      }
+      
+    }
+    matrix_u.compress(VectorOperation::add);
+    matrix_v.compress(VectorOperation::add);
     // std::cout <<  "sss " <<  koko <<std::endl;
   }
 
@@ -799,6 +884,7 @@ namespace Step23
   void WaveEquation<dim>::run ()
   {
     setup_system();
+    
     TimerOutput::Scope t(computing_timer, "run");
     TimerOutput::Scope twall(computing_timer_wall, "run");
 
@@ -808,6 +894,9 @@ namespace Step23
     VectorTools::project (dof_handler, hanging_node_constraints, QGauss<dim>(3),
                           InitialValuesV<dim>(),
                           old_solution_v);
+
+    // matrix_u.compress ();
+    // matrix_v.compress ();
 
     // The next thing is to loop over all the time steps until we reach the
     // end time ($T=5$ in this case). In each time step, we first have to
@@ -838,6 +927,7 @@ namespace Step23
 
     for (unsigned int i=0; i<kkk.size(); ++i)
       kkk(i) = 0;
+    kkk.compress (VectorOperation::add);
 
     for (timestep_number=1, time=time_step;
          time<=2;
@@ -846,6 +936,8 @@ namespace Step23
         std::cout << "Time step " << timestep_number
                   << " at t=" << time
                   << std::endl;
+
+        hehe ();
 
         mass_matrix.vmult (system_rhs, old_solution_u);
 
@@ -871,7 +963,10 @@ namespace Step23
 
         system_rhs.add (theta * time_step, forcing_terms);
         */
-        forcing_terms = kkk;
+        // forcing_terms = kkk;
+        for (unsigned int i=0; i<forcing_terms.size(); ++i)
+          forcing_terms(i) = 0;
+        forcing_terms.compress(VectorOperation::add);
         forcing_terms *= theta * time_step;
 
         forcing_terms.add ((1-theta) * time_step, kkk);
@@ -903,12 +998,27 @@ namespace Step23
           // we have to refill the matrix in every time steps before we
           // actually apply boundary data. The actual content is very simple:
           // it is the sum of the mass matrix and a weighted Laplace matrix:
-          matrix_u.copy_from (mass_matrix);
-          matrix_u.add (theta * theta * time_step * time_step, laplace_matrix);
+          // matrix_u.copy_from (mass_matrix);
+          // 
+          std::cout << "# e, matrix_v " << matrix_v.n_nonzero_elements () << std::endl;
+          std::cout << "# e, matrix_u " << matrix_u.n_nonzero_elements () << std::endl;
+          std::cout << "# e, mass_matrix " << mass_matrix.n_nonzero_elements () << std::endl << std::flush;
+          const types::global_dof_index n_local_dofs
+            = DoFTools::count_dofs_with_subdomain_association (dof_handler,
+                                                         this_mpi_process);
+          // matrix_u.reinit(mpi_communicator,
+          //                 dof_handler.n_dofs(),
+          //                 dof_handler.n_dofs(),
+          //                 n_local_dofs,
+          //                 n_local_dofs,
+          //                 dof_handler.max_couplings_between_dofs());
+          // matrix_u.compress ();
+          matrix_u.copy_from(mass_matrix);
+          matrix_u.add (laplace_matrix, theta * theta * time_step * time_step);
           MatrixTools::apply_boundary_values (boundary_values,
                                               matrix_u,
                                               solution_u,
-                                              system_rhs);
+                                              system_rhs, false);
         }
         solve_u ();
 
@@ -940,11 +1050,25 @@ namespace Step23
                                                     0,
                                                     boundary_values_v_function,
                                                     boundary_values);
+
+          const types::global_dof_index n_local_dofs
+            = DoFTools::count_dofs_with_subdomain_association (dof_handler,
+                                                         this_mpi_process);
+
+          
+
+          // matrix_v.reinit(mpi_communicator,
+          //                 dof_handler.n_dofs(),
+          //                 dof_handler.n_dofs(),
+          //                 n_local_dofs,
+          //                 n_local_dofs,
+          //                 dof_handler.max_couplings_between_dofs());
+          // matrix_v.compress ();
           matrix_v.copy_from (mass_matrix);
           MatrixTools::apply_boundary_values (boundary_values,
                                               matrix_v,
                                               solution_v,
-                                              system_rhs);
+                                              system_rhs, false);
         }
         solve_v ();
 
@@ -956,13 +1080,15 @@ namespace Step23
         // $\left<V^n,MV^n\right>$ and $\left<U^n,AU^n\right>$ in one step,
         // saving us the expense of a temporary vector and several lines of
         // code:
-        // output_results ();
+        output_results ();
 
         pcout << "   Total energy: "
                   << (mass_matrix.matrix_norm_square (solution_v) +
                       laplace_matrix.matrix_norm_square (solution_u)) / 2
                   << std::endl;
 
+        old_solution_u.compress (VectorOperation::add);
+        old_solution_v.compress (VectorOperation::add);
         old_solution_u = solution_u;
         old_solution_v = solution_v;
       }
