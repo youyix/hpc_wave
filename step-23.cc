@@ -533,11 +533,15 @@ namespace Step23
     laplace_matrix.compress(VectorOperation::add);
   }
 
-    template <int dim>
-  void WaveEquation<dim>::hehe ()
+  /** 
+   * TODO: Avoid this.
+   * Use to make matrix_u and matrix_u has same sparisity pattern with mass_matrix.
+   */
+  template <int dim>
+  void WaveEquation<dim>::reshape ()
   {
-    TimerOutput::Scope t(computing_timer, "hehe");
-    TimerOutput::Scope twall(computing_timer_wall, "hehe");
+    TimerOutput::Scope t(computing_timer, "reshape");
+    TimerOutput::Scope twall(computing_timer_wall, "reshape");
 
     const types::global_dof_index n_local_dofs
       = DoFTools::count_dofs_with_subdomain_association (dof_handler,
@@ -594,7 +598,6 @@ namespace Step23
                 cell_matrix(i,j) += (fe_values.shape_value (i, q_index) *
                                      fe_values.shape_value (j, q_index) *
                                      fe_values.JxW (q_index));
-
               }
             }
 
@@ -646,7 +649,7 @@ namespace Step23
                   << " at t=" << time
                   << std::endl;
 
-        hehe ();
+        reshape ();
 
         mass_matrix.vmult (system_rhs, old_solution_u);
 
